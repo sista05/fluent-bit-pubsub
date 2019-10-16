@@ -2,15 +2,14 @@ package main
 
 import (
 	"C"
+	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
 	"unsafe"
 
 	"cloud.google.com/go/pubsub"
-
-	"context"
-
 	"github.com/fluent/fluent-bit-go/output"
 )
 import "os"
@@ -25,6 +24,7 @@ var (
 	countThreshold = pubsub.DefaultPublishSettings.CountThreshold
 	byteThreshold  = pubsub.DefaultPublishSettings.ByteThreshold
 	debug          = false
+	jsonEncode     = false
 )
 
 type Output struct{}
@@ -68,6 +68,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	bt := wrapper.GetConfigKey(ctx, "ByteThreshold")
 	ct := wrapper.GetConfigKey(ctx, "CountThreshold")
 	dt := wrapper.GetConfigKey(ctx, "DelayThreshold")
+	je := wrapper.GetConfigKey(ctx, "JSONEncode")
 
 	fmt.Printf("[pubsub-go] plugin parameter project = '%s'\n", project)
 	fmt.Printf("[pubsub-go] plugin parameter topic = '%s'\n", topic)
@@ -77,6 +78,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	fmt.Printf("[pubsub-go] plugin parameter byte threshold = '%s'\n", bt)
 	fmt.Printf("[pubsub-go] plugin parameter count threshold = '%s'\n", ct)
 	fmt.Printf("[pubsub-go] plugin parameter delay threshold = '%s'\n", dt)
+	fmt.Printf("[pubsub-go] plugin parameter jsonEncode = '%s'\n", je)
 
 	hostname, err = os.Hostname()
 	if err != nil {
@@ -125,6 +127,13 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 		}
 		delayThreshold = time.Duration(v) * time.Millisecond
 	}
+	if je != "" {
+		jsonEncode, err = strconv.ParseBool(je)
+		if err != nil {
+			fmt.Printf("[err][init] %+v\n", err)
+			return output.FLB_ERROR
+		}
+	}
 	publishSetting := pubsub.PublishSettings{
 		ByteThreshold:  byteThreshold,
 		CountThreshold: countThreshold,
@@ -160,9 +169,37 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 			break
 		}
 		timestamp := ts.(output.FLBTime)
-		for k, v := range record {
-			fmt.Printf("[%s] %s %s %v \n", tagname, timestamp.String(), k, v)
-			results = append(results, plugin.Send(ctx, v.([]byte)))
+		record["timestamp"] = []byte(timestamp.String())
+
+		if tagname != "" {
+			record["tag"] = tagname
+		}
+
+		results = make([]*pubsub.PublishResult, 0, len(record))
+
+		if !jsonEncode {
+			for k, v := range record {
+				if debug {
+					fmt.Printf("[%s] %s %s %v \n", tagname, timestamp.String(), k, v)
+				}
+				results = append(results, plugin.Send(ctx, v.([]byte)))
+			}
+		} else {
+			rec := make(map[string]interface{}, len(record))
+			for k, v := range record {
+				key := k.(string)
+				value := string(v.([]byte))
+				rec[key] = value
+			}
+			recordJSON, err := json.Marshal(rec)
+			if err != nil {
+				fmt.Printf("[err][publish][retry] %+v \n", err)
+				return output.FLB_ERROR
+			}
+			if debug {
+				fmt.Printf("[%s] %s %s \n", tagname, timestamp.String(), string(recordJSON))
+			}
+			results = append(results, plugin.Send(ctx, recordJSON))
 		}
 	}
 	for _, result := range results {

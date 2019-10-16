@@ -37,6 +37,7 @@ $ bash make.sh build_linux
 | DelayThreshold  | publish a non-empty batch after this delay has passed. (millsecond) | 1  |
 | ByteThreshold   | publish a batch when its size in bytes reaches this value. | 1000000 |
 | CountThreshold  | publish a batch when it has been reached count of messages. | 100  |
+| JSONEncode      | publish a whole log as JSON encoded string instead of per record | false |
 
 ### Example fluent-bit.conf
 ```conf
@@ -52,3 +53,6 @@ $ bash make.sh build_linux
 ```bash
 $ fluent-bit -c [your config file] -e pubsub.so 
 ```
+
+### Todo
+- Add test for `JSONEncode` options
