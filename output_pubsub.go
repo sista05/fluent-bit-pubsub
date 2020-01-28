@@ -15,7 +15,7 @@ import (
 import "os"
 
 var (
-	plugin   Keeper
+	plugins  = make([]Keeper, 0, 3)
 	hostname string
 	wrapper  = OutputWrapper(&Output{})
 
@@ -146,7 +146,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 		fmt.Printf("[err][init] %+v\n", err)
 		return output.FLB_ERROR
 	}
-	plugin = keeper
+	plugins = append(plugins, keeper)
 	return output.FLB_OK
 }
 
@@ -182,7 +182,9 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 				if debug {
 					fmt.Printf("[%s] %s %s %v \n", tagname, timestamp.String(), k, v)
 				}
-				results = append(results, plugin.Send(ctx, v.([]byte)))
+				for _, plugin := range plugins {
+					results = append(results, plugin.Send(ctx, v.([]byte)))
+				}
 			}
 		} else {
 			rec := make(map[string]interface{}, len(record))
@@ -199,7 +201,9 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 			if debug {
 				fmt.Printf("[%s] %s %s \n", tagname, timestamp.String(), string(recordJSON))
 			}
-			results = append(results, plugin.Send(ctx, recordJSON))
+			for _, plugin := range plugins {
+				results = append(results, plugin.Send(ctx, recordJSON))
+			}
 		}
 	}
 	for _, result := range results {
@@ -218,7 +222,9 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 
 //export FLBPluginExit
 func FLBPluginExit() int {
-	plugin.Stop()
+	for _, plugin := range plugins {
+		plugin.Stop()
+	}
 	return output.FLB_OK
 }
 

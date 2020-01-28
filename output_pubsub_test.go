@@ -47,6 +47,9 @@ func (o *testOutput) GetConfigKey(ctx unsafe.Pointer, key string) string {
 	if key == "DelayThreshold" {
 		return "100"
 	}
+	if key == "JSONEncode" {
+		return "true"
+	}
 	return ""
 }
 
@@ -81,7 +84,7 @@ func TestFLBPluginFlush(t *testing.T) {
 	wrapper = OutputWrapper(&testOutput{})
 	if os.Getenv("PROJECT_ID") == "" || os.Getenv("TOPIC_NAME") == "" ||
 		os.Getenv("JWT_PATH") == "" {
-			return
+		return
 	}
 	ok := FLBPluginFlush(nil, 0, nil)
 	assert.Equal(output.FLB_OK, ok)
