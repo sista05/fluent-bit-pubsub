@@ -12,7 +12,7 @@ import (
 )
 
 type Keeper interface {
-	Send(ctx context.Context, data []byte) *pubsub.PublishResult
+	Send(ctx context.Context, data []byte, attr map[string]string) *pubsub.PublishResult
 	Stop()
 }
 
@@ -54,11 +54,11 @@ func NewKeeper(projectId, topicName, jwtPath string,
 	return Keeper(pubs), nil
 }
 
-func (gps *GooglePubSub) Send(ctx context.Context, data []byte) *pubsub.PublishResult {
+func (gps *GooglePubSub) Send(ctx context.Context, data []byte, attr map[string]string) *pubsub.PublishResult {
 	if len(data) == 0 {
 		return nil
 	}
-	return gps.topic.Publish(ctx, &pubsub.Message{Data: data})
+	return gps.topic.Publish(ctx, &pubsub.Message{Data: data, Attributes: attr})
 }
 
 func (gps *GooglePubSub) Stop() {

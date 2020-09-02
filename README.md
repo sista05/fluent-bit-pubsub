@@ -8,7 +8,7 @@
   <a href="https://codecov.io/gh/gjbae1212/fluent-bit-pubsub"><img src="https://codecov.io/gh/gjbae1212/fluent-bit-pubsub/branch/master/graph/badge.svg"/></a>        
 </p>
 
-This plugin is used to publish data to queue in google pubsub. 
+This plugin is used to publish data to queue in google pubsub.
 
 You could easily use it.
 
@@ -37,7 +37,8 @@ $ bash make.sh build_linux
 | DelayThreshold  | publish a non-empty batch after this delay has passed. (millsecond) | 1  |
 | ByteThreshold   | publish a batch when its size in bytes reaches this value. | 1000000 |
 | CountThreshold  | publish a batch when it has been reached count of messages. | 100  |
-| JSONEncode      | publish a whole log as JSON encoded string instead of per record | false |
+| JSONEncode      | publish a whole log as JSON encoded string instead of per record. | false |
+| Attributes      | publish a log embedded custom attributes as metadata. | NONE(optional) |
 
 ### Example fluent-bit.conf
 ```conf
@@ -46,12 +47,14 @@ $ bash make.sh build_linux
     Match *
     Project your-project(custom)
     Topic your-topic-name(custom)
-    Jwtpath your-jwtpath(custom)    
+    Jwtpath your-jwtpath(custom)
+    Attributes mapdata(custom)
+    JSONEncode True
 ```
 
 ### Example exec
 ```bash
-$ fluent-bit -c [your config file] -e pubsub.so 
+$ fluent-bit -c [your config file] -e pubsub.so
 ```
 
 ### Todo
