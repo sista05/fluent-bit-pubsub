@@ -15,9 +15,10 @@ import (
 import "os"
 
 var (
-	plugins  = make([]Keeper, 0, 3)
-	hostname string
-	wrapper  = OutputWrapper(&Output{})
+	plugins    = make([]Keeper, 0, 3)
+	hostname   string
+	wrapper    = OutputWrapper(&Output{})
+	attributes map[string]string
 
 	timeout        = pubsub.DefaultPublishSettings.Timeout
 	delayThreshold = pubsub.DefaultPublishSettings.DelayThreshold
@@ -69,6 +70,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	ct := wrapper.GetConfigKey(ctx, "CountThreshold")
 	dt := wrapper.GetConfigKey(ctx, "DelayThreshold")
 	je := wrapper.GetConfigKey(ctx, "JSONEncode")
+	attr := wrapper.GetConfigKey(ctx, "Attributes")
 
 	fmt.Printf("[pubsub-go] plugin parameter project = '%s'\n", project)
 	fmt.Printf("[pubsub-go] plugin parameter topic = '%s'\n", topic)
@@ -79,6 +81,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	fmt.Printf("[pubsub-go] plugin parameter count threshold = '%s'\n", ct)
 	fmt.Printf("[pubsub-go] plugin parameter delay threshold = '%s'\n", dt)
 	fmt.Printf("[pubsub-go] plugin parameter jsonEncode = '%s'\n", je)
+	fmt.Printf("[pubsub-go] plugin parameter attributes = '%s'\n", attr)
 
 	hostname, err = os.Hostname()
 	if err != nil {
@@ -134,6 +137,14 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 			return output.FLB_ERROR
 		}
 	}
+	if attr != "" {
+		attributes = make(map[string]string)
+		err := json.Unmarshal([]byte(attr), &attributes)
+		if err != nil {
+			fmt.Printf("[err][init] %+v\n", err)
+			return output.FLB_ERROR
+		}
+	}
 	publishSetting := pubsub.PublishSettings{
 		ByteThreshold:  byteThreshold,
 		CountThreshold: countThreshold,
@@ -183,7 +194,7 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 					fmt.Printf("[%s] %s %s %v \n", tagname, timestamp.String(), k, v)
 				}
 				for _, plugin := range plugins {
-					results = append(results, plugin.Send(ctx, v.([]byte)))
+					results = append(results, plugin.Send(ctx, v.([]byte), attributes))
 				}
 			}
 		} else {
@@ -202,7 +213,7 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 				fmt.Printf("[%s] %s %s \n", tagname, timestamp.String(), string(recordJSON))
 			}
 			for _, plugin := range plugins {
-				results = append(results, plugin.Send(ctx, recordJSON))
+				results = append(results, plugin.Send(ctx, recordJSON, attributes))
 			}
 		}
 	}
