@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/fluent/fluent-bit-go/output"
+	"github.com/satori/go.uuid"
 )
 import "os"
 
@@ -26,6 +27,7 @@ var (
 	byteThreshold  = pubsub.DefaultPublishSettings.ByteThreshold
 	debug          = false
 	jsonEncode     = false
+	uuId           = false
 )
 
 type Output struct{}
@@ -71,6 +73,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	dt := wrapper.GetConfigKey(ctx, "DelayThreshold")
 	je := wrapper.GetConfigKey(ctx, "JSONEncode")
 	attr := wrapper.GetConfigKey(ctx, "Attributes")
+	uuid := wrapper.GetConfigKey(ctx, "Uuid")
 
 	fmt.Printf("[pubsub-go] plugin parameter project = '%s'\n", project)
 	fmt.Printf("[pubsub-go] plugin parameter topic = '%s'\n", topic)
@@ -82,6 +85,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	fmt.Printf("[pubsub-go] plugin parameter delay threshold = '%s'\n", dt)
 	fmt.Printf("[pubsub-go] plugin parameter jsonEncode = '%s'\n", je)
 	fmt.Printf("[pubsub-go] plugin parameter attributes = '%s'\n", attr)
+	fmt.Printf("[pubsub-go] plugin parameter uuid = '%s'\n", uuid)
 
 	hostname, err = os.Hostname()
 	if err != nil {
@@ -145,6 +149,13 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 			return output.FLB_ERROR
 		}
 	}
+	if uuid != "" {
+		uuId, err = strconv.ParseBool(uuid)
+		if err != nil {
+			fmt.Printf("[err][init] %+v\n", err)
+			return output.FLB_ERROR
+		}
+	}
 	publishSetting := pubsub.PublishSettings{
 		ByteThreshold:  byteThreshold,
 		CountThreshold: countThreshold,
@@ -185,7 +196,10 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 		if tagname != "" {
 			record["tag"] = tagname
 		}
-
+		if uuId  {
+			attributes = make(map[string]string)
+			attributes["uuid"] = uuid.Must(uuid.NewV4(), nil).String()
+		}
 		results = make([]*pubsub.PublishResult, 0, len(record))
 
 		if !jsonEncode {
