@@ -197,7 +197,9 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 			record["tag"] = tagname
 		}
 		if uuId  {
-			attributes = make(map[string]string)
+			if (len(attributes) == 0) {
+				attributes = make(map[string]string)
+			}
 			attributes["uuid"] = uuid.Must(uuid.NewV4(), nil).String()
 		}
 		results = make([]*pubsub.PublishResult, 0, len(record))
