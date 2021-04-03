@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 	"unsafe"
+	"sync"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/fluent/fluent-bit-go/output"
@@ -174,12 +175,12 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 
 //export FLBPluginFlush
 func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
+	var mutex = &sync.Mutex{}
 	ctx := context.Background()
 	tagname := ""
 	if tag == nil {
 		tagname = C.GoString(tag)
 	}
-
 	// Create Fluent Bit decoder
 	dec := wrapper.NewDecoder(data, int(length))
 	var results []*pubsub.PublishResult
@@ -202,7 +203,9 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 			}
 			attributes["uuid"] = uuid.Must(uuid.NewV4(), nil).String()
 		}
+		mutex.Lock()
 		results = make([]*pubsub.PublishResult, 0, len(record))
+		mutex.Unlock()
 
 		if !jsonEncode {
 			for k, v := range record {
@@ -218,7 +221,9 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 			for k, v := range record {
 				key := k.(string)
 				value := string(v.([]byte))
+				mutex.Lock()
 				rec[key] = value
+				mutex.Unlock()
 			}
 			recordJSON, err := json.Marshal(rec)
 			if err != nil {
@@ -233,6 +238,7 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 			}
 		}
 	}
+
 	for _, result := range results {
 		if _, err := result.Get(ctx); err != nil {
 			// if timeout is raised.
