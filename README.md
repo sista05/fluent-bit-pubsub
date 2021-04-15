@@ -33,13 +33,13 @@ $ bash make.sh build_linux
 | Topic           | google pubsub topic name | NONE(required) |
 | JwtPath         | jwt file path for accessible google cloud project | NONE(required) |
 | Debug           | print debug log | false(optional) |
-| Uuid            | add UUID to attributes. (keyname:uuid)  | false |
+| Uuid            | add UUID to attributes. (keyname:uuid)[^1] | false |
 | Timeout         | the maximum time that the client will attempt to publish a bundle of messages. (millsecond) | 60000 (optional)|
 | DelayThreshold  | publish a non-empty batch after this delay has passed. (millsecond) | 1  |
 | ByteThreshold   | publish a batch when its size in bytes reaches this value. | 1000000 |
 | CountThreshold  | publish a batch when it has been reached count of messages. | 100  |
 | JSONEncode      | publish a whole log as JSON encoded string instead of per record. | false |
-| Attributes      | publish a log embedded custom attributes as metadata. (value is fixed) | NONE(optional) |
+| Attributes      | publish a log embedded custom attributes as metadata. (value is fixed)[^2]| NONE(optional) |
 
 ### Example fluent-bit.conf
 ```conf
@@ -59,5 +59,10 @@ $ bash make.sh build_linux
 $ fluent-bit -c [your config file] -e pubsub.so
 ```
 
-### Todo
+## Note
+
+[^1][^2]:The Uuid, Attributes options are not supported.
+
+## Todo
 - Add test for `JSONEncode` options
+- Fix Uuid/Attributes options (for concurrent map iteration error)
